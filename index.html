@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redeflex Board | Pix & Captura</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="brand">Redeflex</p>
+          <h1>Jira Lite • Squads Pix & Captura</h1>
+        </div>
+        <button id="newDemandBtn" class="primary-btn">+ Nova Demanda</button>
+      </header>
+
+      <section class="summary-grid" aria-label="resumo das squads">
+        <article class="summary-card">
+          <h2>Squad Pix</h2>
+          <p id="pixCount">0 demandas</p>
+        </article>
+        <article class="summary-card">
+          <h2>Squad Captura</h2>
+          <p id="capturaCount">0 demandas</p>
+        </article>
+      </section>
+
+      <section id="storageBanner" class="storage-banner" aria-live="polite"></section>
+
+      <nav class="tabs" aria-label="navegação entre squads">
+        <button class="tab is-active" data-squad="pix">Squad Pix</button>
+      </nav>
+
+      <main>
+        <section id="board" class="board" aria-live="polite"></section>
+      </main>
+    </div>
+
+    <dialog id="demandDialog" class="dialog">
+      <form id="demandForm" method="dialog" class="dialog-content">
+        <h2>Nova demanda</h2>
+
+        <label>
+          Título
+          <input type="text" id="titleInput" required maxlength="80" />
+        </label>
+
+        <label>
+          Squad
+          <select id="squadInput" required>
+            <option value="pix">Squad Pix</option>
+            <option value="captura">Squad Captura</option>
+          </select>
+        </label>
+
+        <label>
+          Descrição
+          <textarea id="descriptionInput" rows="3" maxlength="240" required></textarea>
+        </label>
+
+        <label>
+          Atualização do P.O.
+          <textarea id="updateInput" rows="3" maxlength="240" placeholder="Status inicial"></textarea>
+        </label>
+
+        <menu>
+          <button value="cancel" type="reset" id="cancelBtn">Cancelar</button>
+          <button value="default" class="primary-btn" type="submit">Salvar Demanda</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <template id="demandTemplate">
+      <article class="card">
+        <div class="card-head">
+          <h3 class="card-title"></h3>
+          <span class="chip"></span>
+        </div>
+        <p class="card-description"></p>
+        <div class="update-block">
+          <label>Atualização do P.O.</label>
+          <textarea class="card-update" rows="3"></textarea>
+          <button class="save-update">Salvar atualização</button>
+          <p class="saved-message" hidden>Atualização salva.</p>
+        </div>
+      </article>
+    </template>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
