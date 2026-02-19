@@ -1,3 +1,9 @@
+window.APP_CONFIG = {
+  supabaseUrl: "https://itgexftkwxgdqcvcoedh.supabase.co",
+  supabaseAnonKey: "sb_publishable_fO8kHRJ31KJcfnwy_MEVrA_Ce5ZY...",
+  tableName: "base_pix",
+  schema: "public",
+};
 
 const STORAGE_KEY = "redeflex_pix_demands";
 
@@ -23,6 +29,7 @@ const storageBanner = document.getElementById("storageBanner");
 
 const config = window.APP_CONFIG || {};
 const tableName = config.tableName || "demands";
+const schemaName = config.schema || "public";
 
 function normalizeSupabaseUrl(url) {
   if (!url) return "";
@@ -39,6 +46,17 @@ function normalizeSupabaseUrl(url) {
 
 const supabaseBaseUrl = normalizeSupabaseUrl(config.supabaseUrl);
 const hasRemoteConfig = Boolean(supabaseBaseUrl && config.supabaseAnonKey);
+
+function resolveTablePath(name) {
+  if (!name) return { schema: schemaName, table: "demands" };
+  if (name.includes(".")) {
+    const [schema, table] = name.split(".");
+    return { schema, table };
+  }
+  return { schema: schemaName, table: name };
+}
+
+const tableTarget = resolveTablePath(tableName);
 
 let demands = [];
 let selectedDemandId = null;
@@ -81,6 +99,8 @@ async function requestSupabase(path, options = {}) {
     headers: {
       apikey: config.supabaseAnonKey,
       Authorization: `Bearer ${config.supabaseAnonKey}`,
+      "Accept-Profile": tableTarget.schema,
+      "Content-Profile": tableTarget.schema,
       ...(options.headers || {}),
     },
   });
@@ -97,7 +117,7 @@ async function requestSupabase(path, options = {}) {
 function formatRemoteError(error) {
   const msg = String(error?.message || "");
   if (msg.includes("404")) {
-    return "Erro remoto (404): confira se 'supabaseUrl' está sem /base_pix e se 'tableName' existe.";
+    return "Erro remoto (404): verifique supabaseUrl, tableName e schema (ex.: schema: 'public').";
   }
   if (msg.includes("401") || msg.includes("403")) {
     return "Erro remoto (auth): confira anon key e políticas RLS da tabela.";
@@ -107,13 +127,13 @@ function formatRemoteError(error) {
 
 async function remoteFetchDemands() {
   const rows = await requestSupabase(
-    `${tableName}?select=id,title,description,update,status,created_at&order=created_at.desc.nullslast`,
+    `${tableTarget.table}?select=id,title,description,update,status,created_at&order=created_at.desc.nullslast`,
   );
   return rows.map(normalizeDemand);
 }
 
 async function remoteInsertDemand(demand) {
-  const inserted = await requestSupabase(tableName, {
+  const inserted = await requestSupabase(tableTarget.table, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -126,8 +146,7 @@ async function remoteInsertDemand(demand) {
 }
 
 async function remoteUpdateDemand(demand) {
-  await requestSupabase(`
-${tableName}?id=eq.${encodeURIComponent(demand.id)}`.trim(), {
+  await requestSupabase(`${tableTarget.table}?id=eq.${encodeURIComponent(demand.id)}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -143,7 +162,8 @@ function loadLocalDemands() {
     try {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed)) {
-        return parsed.map(normalizeDemand).filter((item) => item.id && item.title);
+        const sanitized = parsed.map(normalizeDemand).filter((item) => item.id && item.title);
+        if (sanitized.length) return sanitized;
       }
     } catch (error) {
       console.warn("LocalStorage inválido. Resetando dados locais.", error);
@@ -181,7 +201,7 @@ async function bootstrapDemands() {
     setBanner("Modo remoto ativo: demandas e atualizações salvas no Supabase.", true);
   } catch (error) {
     demands = loadLocalDemands();
-    setBanner(formatRemoteError(error), false);
+    setBanner(`${formatRemoteError(error)} (fallback local ativado)`, false);
     console.error(error);
   }
 }
@@ -269,7 +289,7 @@ demandForm.addEventListener("submit", async (event) => {
       demands.unshift(inserted);
     } catch (error) {
       console.error(error);
-      setBanner(formatRemoteError(error), false);
+      setBanner(`${formatRemoteError(error)} (fallback local ativado)`, false);
       return;
     }
   } else {
@@ -297,7 +317,7 @@ detailsForm.addEventListener("submit", async (event) => {
       await remoteUpdateDemand(target);
     } catch (error) {
       console.error(error);
-      setBanner(formatRemoteError(error), false);
+      setBanner(`${formatRemoteError(error)} (fallback local ativado)`, false);
       return;
     }
   } else {
@@ -310,8 +330,8 @@ detailsForm.addEventListener("submit", async (event) => {
 });
 
 (async function init() {
+  setBanner("Conectando e carregando demandas...", false);
   await bootstrapDemands();
   updateSummary();
   renderBoard();
 })();
-
