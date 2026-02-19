@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Redeflex Board | Pix & Captura</title>
+    <title>Redeflex Board | Squad PIX</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,27 +17,27 @@
       <header class="topbar">
         <div>
           <p class="brand">Redeflex</p>
-          <h1>Jira Lite • Squads Pix & Captura</h1>
+          <h1>Demandas • Squad PIX</h1>
         </div>
         <button id="newDemandBtn" class="primary-btn">+ Nova Demanda</button>
       </header>
 
-      <section class="summary-grid" aria-label="resumo das squads">
+      <section class="summary-grid" aria-label="resumo de demandas">
         <article class="summary-card">
-          <h2>Squad Pix</h2>
-          <p id="pixCount">0 demandas</p>
+          <h2>Total</h2>
+          <p id="totalCount">0 demandas</p>
         </article>
         <article class="summary-card">
-          <h2>Squad Captura</h2>
-          <p id="capturaCount">0 demandas</p>
+          <h2>Em andamento</h2>
+          <p id="progressCount">0 demandas</p>
+        </article>
+        <article class="summary-card">
+          <h2>Concluídas</h2>
+          <p id="doneCount">0 demandas</p>
         </article>
       </section>
 
       <section id="storageBanner" class="storage-banner" aria-live="polite"></section>
-
-      <nav class="tabs" aria-label="navegação entre squads">
-        <button class="tab is-active" data-squad="pix">Squad Pix</button>
-      </nav>
 
       <main>
         <section id="board" class="board" aria-live="polite"></section>
@@ -54,43 +54,59 @@
         </label>
 
         <label>
-          Squad
-          <select id="squadInput" required>
-            <option value="pix">Squad Pix</option>
-            <option value="captura">Squad Captura</option>
-          </select>
-        </label>
-
-        <label>
           Descrição
           <textarea id="descriptionInput" rows="3" maxlength="240" required></textarea>
         </label>
 
         <label>
-          Atualização do P.O.
-          <textarea id="updateInput" rows="3" maxlength="240" placeholder="Status inicial"></textarea>
+          Status
+          <select id="statusInput" required>
+            <option value="backlog">Backlog</option>
+            <option value="andamento">Em andamento</option>
+            <option value="concluida">Concluída</option>
+          </select>
         </label>
 
         <menu>
-          <button value="cancel" type="reset" id="cancelBtn">Cancelar</button>
+          <button value="cancel" type="reset" id="cancelCreateBtn">Cancelar</button>
           <button value="default" class="primary-btn" type="submit">Salvar Demanda</button>
         </menu>
       </form>
     </dialog>
 
+    <dialog id="detailsDialog" class="dialog">
+      <form id="detailsForm" method="dialog" class="dialog-content">
+        <h2 id="detailsTitle"></h2>
+        <p id="detailsDescription" class="details-description"></p>
+
+        <label>
+          Status
+          <select id="detailsStatusInput" required>
+            <option value="backlog">Backlog</option>
+            <option value="andamento">Em andamento</option>
+            <option value="concluida">Concluída</option>
+          </select>
+        </label>
+
+        <label>
+          Atualização do P.O.
+          <textarea id="detailsUpdateInput" rows="5" placeholder="Escreva aqui a atualização"></textarea>
+        </label>
+
+        <menu>
+          <button value="cancel" type="reset" id="cancelDetailsBtn">Fechar</button>
+          <button value="default" class="primary-btn" type="submit">Salvar atualização</button>
+        </menu>
+      </form>
+    </dialog>
+
     <template id="demandTemplate">
-      <article class="card">
+      <article class="card" role="button" tabindex="0">
         <div class="card-head">
           <h3 class="card-title"></h3>
           <span class="chip"></span>
         </div>
         <p class="card-description"></p>
-        <div class="update-block">
-          <label>Atualização do P.O.</label>
-          <textarea class="card-update" rows="3"></textarea>
-          <button class="save-update">Salvar atualização</button>
-          <p class="saved-message" hidden>Atualização salva.</p>
-        </div>
       </article>
     </template>
 
