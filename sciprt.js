@@ -1,60 +1,10 @@
 window.APP_CONFIG = {
   supabaseUrl: "https://itgexftkwxgdqcvcoedh.supabase.co",
-  supabaseAnonKey: "sb_publishable_fO8kHRJ31KJcfnwy_MEVrA_Ce5ZY...",
+ supabaseAnonKey: "sb_publishable_CgwdNRZQoZoAh0yicSmVHw_Ae5LXm9a",
   tableName: "base_pix",
   schema: "public",
 };
 
-const STORAGE_KEY = "redeflex_pix_demands";
-
-function generateId() {
-  if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
-  return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-const board = document.getElementById("board");
-const demandTemplate = document.getElementById("demandTemplate");
-const demandDialog = document.getElementById("demandDialog");
-const demandForm = document.getElementById("demandForm");
-const detailsDialog = document.getElementById("detailsDialog");
-const detailsForm = document.getElementById("detailsForm");
-const detailsTitle = document.getElementById("detailsTitle");
-const detailsDescription = document.getElementById("detailsDescription");
-const detailsStatusInput = document.getElementById("detailsStatusInput");
-const detailsUpdateInput = document.getElementById("detailsUpdateInput");
-const totalCount = document.getElementById("totalCount");
-const progressCount = document.getElementById("progressCount");
-const doneCount = document.getElementById("doneCount");
-const storageBanner = document.getElementById("storageBanner");
-
-const config = window.APP_CONFIG || {};
-const tableName = config.tableName || "demands";
-const schemaName = config.schema || "public";
-
-function normalizeSupabaseUrl(url) {
-  if (!url) return "";
-  const trimmed = String(url).trim();
-  if (!trimmed) return "";
-
-  try {
-    const parsed = new URL(trimmed);
-    return parsed.origin;
-  } catch {
-    return trimmed.replace(/\/+$/, "");
-  }
-}
-
-const supabaseBaseUrl = normalizeSupabaseUrl(config.supabaseUrl);
-const hasRemoteConfig = Boolean(supabaseBaseUrl && config.supabaseAnonKey);
-
-function resolveTablePath(name) {
-  if (!name) return { schema: schemaName, table: "demands" };
-  if (name.includes(".")) {
-    const [schema, table] = name.split(".");
-    return { schema, table };
-  }
-  return { schema: schemaName, table: name };
-}
 
 const tableTarget = resolveTablePath(tableName);
 
@@ -84,21 +34,39 @@ function setBanner(text, isRemote) {
 }
 
 function normalizeDemand(raw) {
+  const logicalId = raw.id || raw.primari_key || generateId();
+  const title = raw.title || raw.demanda || raw.produto || "Demanda sem título";
+  const description = raw.description || raw.sistema || raw.plataforma || "Sem descrição";
+  const update = raw.update || raw.atualizacao || "";
+
   return {
-    id: raw.id,
-    title: raw.title,
-    description: raw.description,
-    update: raw.update || "",
+    id: String(logicalId),
+    dbPrimaryKey: raw.primari_key ?? null,
+    title,
+    description,
+    update,
     status: raw.status || "backlog",
   };
+}
+
+function buildAuthHeaders() {
+  const key = String(config.supabaseAnonKey || "").trim();
+  const headers = { apikey: key };
+
+  // Chaves JWT antigas começam com eyJ.
+  // Em chaves publishable (sb_publishable_...) evitamos enviar Bearer para não causar erro de JWT inválido.
+  if (key.startsWith("eyJ")) {
+    headers.Authorization = `Bearer ${key}`;
+  }
+
+  return headers;
 }
 
 async function requestSupabase(path, options = {}) {
   const response = await fetch(`${supabaseBaseUrl}/rest/v1/${path}`, {
     ...options,
     headers: {
-      apikey: config.supabaseAnonKey,
-      Authorization: `Bearer ${config.supabaseAnonKey}`,
+      ...buildAuthHeaders(),
       "Accept-Profile": tableTarget.schema,
       "Content-Profile": tableTarget.schema,
       ...(options.headers || {}),
@@ -116,43 +84,78 @@ async function requestSupabase(path, options = {}) {
 
 function formatRemoteError(error) {
   const msg = String(error?.message || "");
+
   if (msg.includes("404")) {
-    return "Erro remoto (404): verifique supabaseUrl, tableName e schema (ex.: schema: 'public').";
+    return "Erro remoto (404): verifique supabaseUrl, tableName e schema.";
   }
-  if (msg.includes("401") || msg.includes("403")) {
-    return "Erro remoto (auth): confira anon key e políticas RLS da tabela.";
+
+  if (
+    msg.includes("Invalid API key") ||
+    msg.includes("No API key found") ||
+    msg.includes("401") ||
+    msg.includes("JWT")
+  ) {
+    return "Erro auth: confirme se a chave é válida (anon JWT ou publishable) e se o projeto está ativo.";
   }
-  return "Falha no remoto. Verifique URL, chave e políticas RLS no Supabase.";
+
+  if (msg.includes("403") || msg.includes("row-level security") || msg.includes("permission denied")) {
+    return "Erro de permissão: ajuste RLS/policies (SELECT/INSERT/UPDATE) para role anon.";
+  }
+
+  if (msg.includes("The schema must be one of") || msg.includes("schema")) {
+    return "Schema não exposto: adicione o schema em Settings > API > Exposed schemas.";
+  }
+
+  return "Falha no remoto. Verifique URL, chave, schema exposto e políticas RLS.";
 }
 
 async function remoteFetchDemands() {
   const rows = await requestSupabase(
-    `${tableTarget.table}?select=id,title,description,update,status,created_at&order=created_at.desc.nullslast`,
+    `${tableTarget.table}?select=primari_key,id,demanda,produto,sistema,plataforma,status,atualizacao,data_criacao,data_atualiza&order=data_criacao.desc.nullslast,primari_key.desc`,
   );
   return rows.map(normalizeDemand);
 }
 
 async function remoteInsertDemand(demand) {
+  const payload = {
+    id: demand.id,
+    demanda: demand.title,
+    status: demand.status,
+    atualizacao: demand.update || "",
+    data_criacao: new Date().toISOString().slice(0, 10),
+    data_atualiza: new Date().toISOString().slice(0, 10),
+    squad_team: "pix",
+  };
+
   const inserted = await requestSupabase(tableTarget.table, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify([demand]),
+    body: JSON.stringify([payload]),
   });
 
   return normalizeDemand(inserted[0]);
 }
 
 async function remoteUpdateDemand(demand) {
-  await requestSupabase(`${tableTarget.table}?id=eq.${encodeURIComponent(demand.id)}`, {
+  const filter =
+    demand.dbPrimaryKey !== null && demand.dbPrimaryKey !== undefined
+      ? `primari_key=eq.${encodeURIComponent(demand.dbPrimaryKey)}`
+      : `id=eq.${encodeURIComponent(demand.id)}`;
+
+  await requestSupabase(`${tableTarget.table}?${filter}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify({ update: demand.update, status: demand.status }),
+    body: JSON.stringify({
+      atualizacao: demand.update,
+      status: demand.status,
+      data_atualiza: new Date().toISOString().slice(0, 10),
+    }),
   });
 }
 
