@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redeflex Board | Squad PIX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="brand">Redeflex</p>
+          <h1>Demandas • Squad PIX</h1>
+        </div>
+        <button id="newDemandBtn" class="primary-btn">+ Nova Demanda</button>
+      </header>
+
+      <section class="summary-grid" aria-label="resumo de demandas">
+        <article class="summary-card">
+          <h2>Total</h2>
+          <p id="totalCount">0 demandas</p>
+        </article>
+        <article class="summary-card">
+          <h2>Em andamento</h2>
+          <p id="progressCount">0 demandas</p>
+        </article>
+        <article class="summary-card">
+          <h2>Concluídas</h2>
+          <p id="doneCount">0 demandas</p>
+        </article>
+      </section>
+
+      <section id="storageBanner" class="storage-banner" aria-live="polite"></section>
+
+      <main>
+        <section id="board" class="board" aria-live="polite"></section>
+      </main>
+    </div>
+
+    <dialog id="demandDialog" class="dialog">
+      <form id="demandForm" method="dialog" class="dialog-content">
+        <h2>Nova demanda</h2>
+
+        <label>
+          Título
+          <input type="text" id="titleInput" required maxlength="80" />
+        </label>
+
+        <label>
+          Descrição
+          <textarea id="descriptionInput" rows="3" maxlength="240" required></textarea>
+        </label>
+
+        <label>
+          Status
+          <select id="statusInput" required>
+            <option value="backlog">Backlog</option>
+            <option value="andamento">Em andamento</option>
+            <option value="concluida">Concluída</option>
+          </select>
+        </label>
+
+        <menu>
+          <button value="cancel" type="reset" id="cancelCreateBtn">Cancelar</button>
+          <button value="default" class="primary-btn" type="submit">Salvar Demanda</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="detailsDialog" class="dialog">
+      <form id="detailsForm" method="dialog" class="dialog-content">
+        <h2 id="detailsTitle"></h2>
+        <p id="detailsDescription" class="details-description"></p>
+
+        <label>
+          Status
+          <select id="detailsStatusInput" required>
+            <option value="backlog">Backlog</option>
+            <option value="andamento">Em andamento</option>
+            <option value="concluida">Concluída</option>
+          </select>
+        </label>
+
+        <label>
+          Atualização do P.O.
+          <textarea id="detailsUpdateInput" rows="5" placeholder="Escreva aqui a atualização"></textarea>
+        </label>
+
+        <menu>
+          <button value="cancel" type="reset" id="cancelDetailsBtn">Fechar</button>
+          <button value="default" class="primary-btn" type="submit">Salvar atualização</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <template id="demandTemplate">
+      <article class="card" role="button" tabindex="0">
+        <div class="card-head">
+          <h3 class="card-title"></h3>
+          <span class="chip"></span>
+        </div>
+        <p class="card-description"></p>
+      </article>
+    </template>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
