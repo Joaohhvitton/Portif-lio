@@ -338,4 +338,3 @@ detailsForm.addEventListener("submit", async (event) => {
   updateSummary();
   renderBoard();
 })();
-
