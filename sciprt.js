@@ -1,11 +1,3 @@
-window.APP_CONFIG = {
-  supabaseUrl: "https://itgexftkwxgdqcvcoedh.supabase.co",
- supabaseAnonKey: "sb_publishable_CgwdNRZQoZoAh0yicSmVHw_Ae5LXm9a",
-  tableName: "base_pix",
-  schema: "public",
-};
-
-
 const tableTarget = resolveTablePath(tableName);
 
 let demands = [];
@@ -338,4 +330,5 @@ detailsForm.addEventListener("submit", async (event) => {
   updateSummary();
   renderBoard();
 })();
+
 
