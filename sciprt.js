@@ -1,3 +1,8 @@
+const config = window.APP_CONFIG || {};
+const supabaseBaseUrl = (config.supabaseUrl || "").replace(/\/$/, "");
+const tableName = config.tableName || "public.base_pix";
+const hasRemoteConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
+
 const tableTarget = resolveTablePath(tableName);
 
 let demands = [];
@@ -330,5 +335,6 @@ detailsForm.addEventListener("submit", async (event) => {
   updateSummary();
   renderBoard();
 })();
+
 
 
