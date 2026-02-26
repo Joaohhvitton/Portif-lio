@@ -1,9 +1,27 @@
-const config = window.APP_CONFIG || {};
-const supabaseBaseUrl = (config.supabaseUrl || "").replace(/\/$/, "");
-const tableName = config.tableName || "public.base_pix";
-const hasRemoteConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
+const STORAGE_KEY = "redeflex.demands.v1";
 
-const tableTarget = resolveTablePath(tableName);
+const config = window.APP_CONFIG || {};
+const supabaseBaseUrl = String(config.supabaseUrl || "").replace(/\/$/, "");
+const hasRemoteConfig = Boolean(
+  supabaseBaseUrl && config.supabaseAnonKey && config.tableName,
+);
+
+const storageBanner = document.getElementById("storageBanner");
+const board = document.getElementById("board");
+const demandTemplate = document.getElementById("demandTemplate");
+const demandDialog = document.getElementById("demandDialog");
+const detailsDialog = document.getElementById("detailsDialog");
+const demandForm = document.getElementById("demandForm");
+const detailsForm = document.getElementById("detailsForm");
+const detailsTitle = document.getElementById("detailsTitle");
+const detailsDescription = document.getElementById("detailsDescription");
+const detailsStatusInput = document.getElementById("detailsStatusInput");
+const detailsUpdateInput = document.getElementById("detailsUpdateInput");
+const totalCount = document.getElementById("totalCount");
+const progressCount = document.getElementById("progressCount");
+const doneCount = document.getElementById("doneCount");
+
+const tableTarget = resolveTablePath(config.tableName);
 
 let demands = [];
 let selectedDemandId = null;
@@ -24,6 +42,22 @@ const initialDemands = [
     update: "Aguardando validação do negócio.",
   },
 ];
+
+function resolveTablePath(rawTableName) {
+  const value = String(rawTableName || "").trim();
+  if (!value) return { schema: "public", table: "base_pix" };
+
+  if (value.includes(".")) {
+    const [schema, table] = value.split(".");
+    return { schema, table };
+  }
+
+  return { schema: "public", table: value };
+}
+
+function generateId() {
+  return `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+}
 
 function setBanner(text, isRemote) {
   storageBanner.textContent = text;
@@ -50,8 +84,6 @@ function buildAuthHeaders() {
   const key = String(config.supabaseAnonKey || "").trim();
   const headers = { apikey: key };
 
-  // Chaves JWT antigas começam com eyJ.
-  // Em chaves publishable (sb_publishable_...) evitamos enviar Bearer para não causar erro de JWT inválido.
   if (key.startsWith("eyJ")) {
     headers.Authorization = `Bearer ${key}`;
   }
@@ -335,7 +367,3 @@ detailsForm.addEventListener("submit", async (event) => {
   updateSummary();
   renderBoard();
 })();
-
-
-
-
