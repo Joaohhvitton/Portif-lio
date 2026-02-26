@@ -108,7 +108,7 @@ function formatRemoteError(error) {
 
 async function remoteFetchDemands() {
   const rows = await requestSupabase(
-    `${tableTarget.table}?select=primari_key,id,demanda,produto,sistema,plataforma,status,atualizacao,data_criacao,data_atualiza&order=data_criacao.desc.nullslast,primari_key.desc`,
+    `${tableTarget.table}?select=primari_key,id,demanda,produto,sistema,plataforma,status,atualizacao,data_criacao&order=data_criacao.desc.nullslast,primari_key.desc`,
   );
   return rows.map(normalizeDemand);
 }
@@ -335,6 +335,7 @@ detailsForm.addEventListener("submit", async (event) => {
   updateSummary();
   renderBoard();
 })();
+
 
 
 
