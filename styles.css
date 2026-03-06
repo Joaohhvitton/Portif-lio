@@ -137,13 +137,15 @@ h1 {
   color: #ffd993;
 }
 
-.chip.andamento {
+.chip.andamento,
+.chip.em_desenvolvimento {
   background: #3b1128;
   border-color: #b3295f;
   color: #ffb0cc;
 }
 
-.chip.concluida {
+.chip.concluida,
+.chip.concluido {
   background: #123020;
   border-color: #2c8d5e;
   color: #a6f1cc;
@@ -177,6 +179,40 @@ select {
   color: var(--text);
   padding: 0.7rem;
   resize: vertical;
+}
+
+
+
+/* Mantém selects/inputs no tema vermelho, sem fundo branco nativo */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #ffb8c8 50%), linear-gradient(135deg, #ffb8c8 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(50% + 1px), calc(100% - 12px) calc(50% + 1px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 2rem;
+}
+
+select option,
+select optgroup {
+  background: #18070c;
+  color: var(--text);
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #18070c inset;
+  -webkit-text-fill-color: var(--text);
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 button {
@@ -253,4 +289,101 @@ button {
   border: 1px dashed var(--border);
   border-radius: 16px;
   padding: 2rem 1rem;
+}
+
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+@media (max-width: 680px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+#demandForm {
+  max-height: 78vh;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+
+.chip.refinamento {
+  background: #2b2444;
+  border-color: #6d5ad1;
+  color: #d2c8ff;
+}
+
+
+.chip.em_refinamento {
+  background: #2b2444;
+  border-color: #6d5ad1;
+  color: #d2c8ff;
+}
+
+.chip.homologacao {
+  background: #123043;
+  border-color: #2f83ad;
+  color: #b9e6ff;
+}
+
+.chip.teste_qa {
+  background: #3b2c12;
+  border-color: #bb8a1f;
+  color: #ffe1a4;
+}
+
+.chip.impedido {
+  background: #3a1111;
+  border-color: #d14949;
+  color: #ffb8b8;
+}
+
+
+.field-hint {
+  grid-column: 1 / -1;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  margin-top: -0.2rem;
+}
+
+
+.platform-select {
+  border-radius: 10px;
+  border: 1px solid #7f1c31;
+  background: #18070c;
+  color: var(--text);
+}
+
+.platform-select summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.7rem;
+}
+
+.platform-select summary::-webkit-details-marker {
+  display: none;
+}
+
+.platform-options {
+  border-top: 1px solid #7f1c31;
+  padding: 0.4rem 0.7rem 0.7rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.platform-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+}
+
+.platform-options input[type="checkbox"] {
+  width: auto;
+  accent-color: #b3295f;
 }
