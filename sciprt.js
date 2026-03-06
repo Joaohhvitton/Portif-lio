@@ -4,15 +4,11 @@ window.APP_CONFIG = {
   tableName: "public.base_pix",
 };
 
-
-
 const STORAGE_KEY = "redeflex.demands.v1";
 
 const config = window.APP_CONFIG || {};
 const supabaseBaseUrl = String(config.supabaseUrl || "").replace(/\/$/, "");
-const hasRemoteConfig = Boolean(
-  supabaseBaseUrl && config.supabaseAnonKey && config.tableName,
-);
+const hasRemoteConfig = Boolean(supabaseBaseUrl && config.supabaseAnonKey && config.tableName);
 
 const storageBanner = document.getElementById("storageBanner");
 const board = document.getElementById("board");
@@ -25,6 +21,7 @@ const detailsTitle = document.getElementById("detailsTitle");
 const detailsDescription = document.getElementById("detailsDescription");
 const detailsStatusInput = document.getElementById("detailsStatusInput");
 const detailsUpdateInput = document.getElementById("detailsUpdateInput");
+const detailsMeta = document.getElementById("detailsMeta");
 const totalCount = document.getElementById("totalCount");
 const progressCount = document.getElementById("progressCount");
 const doneCount = document.getElementById("doneCount");
@@ -41,6 +38,10 @@ const initialDemands = [
     status: "andamento",
     description: "Mapear divergências de retorno no processamento de QR dinâmico.",
     update: "Em refinamento com arquitetura.",
+    produto: "Pix Cobrança",
+    sistema: "Core Liquidação",
+    plataforma: "API",
+    squadTeam: "pix",
   },
   {
     id: generateId(),
@@ -48,6 +49,10 @@ const initialDemands = [
     status: "backlog",
     description: "Documentar edge cases e regras do fluxo de devolução.",
     update: "Aguardando validação do negócio.",
+    produto: "Pix Devolução",
+    sistema: "Backoffice",
+    plataforma: "Web",
+    squadTeam: "pix",
   },
 ];
 
@@ -67,6 +72,22 @@ function generateId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
+
+function normalizeStatus(rawStatus) {
+  const value = String(rawStatus || "").trim().toLowerCase();
+  const clean = value.normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+  if (["andamento", "em andamento", "em_andamento", "in progress", "in_progress"].includes(clean)) {
+    return "andamento";
+  }
+
+  if (["concluida", "concluido", "concluídas", "concluidas", "done", "finalizada", "finalizado"].includes(clean)) {
+    return "concluida";
+  }
+
+  return "backlog";
+}
+
 function setBanner(text, isRemote) {
   storageBanner.textContent = text;
   storageBanner.classList.toggle("is-remote", isRemote);
@@ -84,7 +105,13 @@ function normalizeDemand(raw) {
     title,
     description,
     update,
-    status: raw.status || "backlog",
+    status: normalizeStatus(raw.status),
+    produto: raw.produto || "-",
+    sistema: raw.sistema || "-",
+    plataforma: raw.plataforma || "-",
+    squadTeam: raw.squad_team || "-",
+    createdAt: raw.data_criacao || "-",
+    updatedAt: raw.data_atualiza || "-",
   };
 }
 
@@ -116,7 +143,16 @@ async function requestSupabase(path, options = {}) {
   }
 
   const errorBody = await response.text();
-  throw new Error(`Supabase ${response.status}: ${errorBody || "sem detalhes"}`);
+
+  let details = errorBody || "sem detalhes";
+  try {
+    const parsed = JSON.parse(errorBody);
+    details = parsed.message || parsed.error_description || parsed.details || errorBody;
+  } catch (_) {
+    // mantém texto bruto se não for JSON
+  }
+
+  throw new Error(`Supabase ${response.status}: ${details}`);
 }
 
 function formatRemoteError(error) {
@@ -126,12 +162,7 @@ function formatRemoteError(error) {
     return "Erro remoto (404): verifique supabaseUrl, tableName e schema.";
   }
 
-  if (
-    msg.includes("Invalid API key") ||
-    msg.includes("No API key found") ||
-    msg.includes("401") ||
-    msg.includes("JWT")
-  ) {
+  if (msg.includes("Invalid API key") || msg.includes("No API key found") || msg.includes("401") || msg.includes("JWT")) {
     return "Erro auth: confirme se a chave é válida (anon JWT ou publishable) e se o projeto está ativo.";
   }
 
@@ -148,20 +179,22 @@ function formatRemoteError(error) {
 
 async function remoteFetchDemands() {
   const rows = await requestSupabase(
-    `${tableTarget.table}?select=primari_key,id,demanda,produto,sistema,plataforma,status,atualizacao,data_criacao&order=data_criacao.desc.nullslast,primari_key.desc`,
+    `${tableTarget.table}?select=primari_key,id,demanda,produto,sistema,plataforma,status,atualizacao,squad_team,data_criacao,data_atualiza&order=data_criacao.desc.nullslast,primari_key.desc`,
   );
   return rows.map(normalizeDemand);
 }
 
 async function remoteInsertDemand(demand) {
   const payload = {
-    id: demand.id,
     demanda: demand.title,
-    status: demand.status,
+    status: normalizeStatus(demand.status),
     atualizacao: demand.update || "",
     data_criacao: new Date().toISOString().slice(0, 10),
     data_atualiza: new Date().toISOString().slice(0, 10),
-    squad_team: "pix",
+    produto: demand.produto || "-",
+    sistema: demand.sistema || demand.description || "-",
+    plataforma: demand.plataforma || "-",
+    squad_team: demand.squadTeam || "pix",
   };
 
   const inserted = await requestSupabase(tableTarget.table, {
@@ -190,7 +223,7 @@ async function remoteUpdateDemand(demand) {
     },
     body: JSON.stringify({
       atualizacao: demand.update,
-      status: demand.status,
+      status: normalizeStatus(demand.status),
       data_atualiza: new Date().toISOString().slice(0, 10),
     }),
   });
@@ -247,8 +280,9 @@ async function bootstrapDemands() {
 }
 
 function translateStatus(status) {
-  if (status === "andamento") return "Em andamento";
-  if (status === "concluida") return "Concluída";
+  const normalized = normalizeStatus(status);
+  if (normalized === "andamento") return "Em andamento";
+  if (normalized === "concluida") return "Concluída";
   return "Backlog";
 }
 
@@ -258,12 +292,26 @@ function updateSummary() {
   doneCount.textContent = `${demands.filter((item) => item.status === "concluida").length} demandas`;
 }
 
+function renderMetaList(metaPairs) {
+  return metaPairs.map(([label, value]) => `<dt>${label}</dt><dd>${value || "-"}</dd>`).join("");
+}
+
 function openDemandDetails(demand) {
   selectedDemandId = demand.id;
   detailsTitle.textContent = demand.title;
   detailsDescription.textContent = demand.description;
   detailsStatusInput.value = demand.status;
   detailsUpdateInput.value = demand.update || "";
+  detailsMeta.innerHTML = renderMetaList([
+    ["ID lógico", demand.id],
+    ["Primary key", demand.dbPrimaryKey],
+    ["Produto", demand.produto],
+    ["Sistema", demand.sistema],
+    ["Plataforma", demand.plataforma],
+    ["Squad", demand.squadTeam],
+    ["Criada em", demand.createdAt],
+    ["Atualizada em", demand.updatedAt],
+  ]);
   detailsDialog.showModal();
 }
 
@@ -285,8 +333,17 @@ function renderBoard() {
 
     node.querySelector(".card-title").textContent = demand.title;
     node.querySelector(".card-description").textContent = demand.description;
-    chip.textContent = translateStatus(demand.status);
-    chip.classList.add(demand.status);
+
+    const cardMeta = node.querySelector(".card-meta");
+    cardMeta.innerHTML = [
+      `<li><strong>Produto:</strong> ${demand.produto || "-"}</li>`,
+      `<li><strong>Sistema:</strong> ${demand.sistema || "-"}</li>`,
+      `<li><strong>Plataforma:</strong> ${demand.plataforma || "-"}</li>`,
+    ].join("");
+
+    const normalizedStatus = normalizeStatus(demand.status);
+    chip.textContent = translateStatus(normalizedStatus);
+    chip.classList.add(normalizedStatus);
 
     card.addEventListener("click", () => openDemandDetails(demand));
     card.addEventListener("keydown", (event) => {
@@ -321,6 +378,10 @@ demandForm.addEventListener("submit", async (event) => {
     description: document.getElementById("descriptionInput").value.trim(),
     status: document.getElementById("statusInput").value,
     update: "",
+    produto: "-",
+    sistema: "-",
+    plataforma: "-",
+    squadTeam: "pix",
   };
 
   if (hasRemoteConfig) {
@@ -329,8 +390,9 @@ demandForm.addEventListener("submit", async (event) => {
       demands.unshift(inserted);
     } catch (error) {
       console.error(error);
-      setBanner(`${formatRemoteError(error)} (fallback local ativado)`, false);
-      return;
+      demands.unshift(normalizeDemand(demand));
+      persistLocalDemands();
+      setBanner(`Não foi possível criar no Supabase agora. Demanda salva localmente neste navegador. ${formatRemoteError(error)}`, false);
     }
   } else {
     demands.unshift(demand);
@@ -351,14 +413,15 @@ detailsForm.addEventListener("submit", async (event) => {
 
   target.status = detailsStatusInput.value;
   target.update = detailsUpdateInput.value.trim();
+  target.updatedAt = new Date().toISOString().slice(0, 10);
 
   if (hasRemoteConfig) {
     try {
       await remoteUpdateDemand(target);
     } catch (error) {
       console.error(error);
-      setBanner(`${formatRemoteError(error)} (fallback local ativado)`, false);
-      return;
+      persistLocalDemands();
+      setBanner(`Não foi possível atualizar no Supabase agora. Atualização salva localmente neste navegador. ${formatRemoteError(error)}`, false);
     }
   } else {
     persistLocalDemands();
