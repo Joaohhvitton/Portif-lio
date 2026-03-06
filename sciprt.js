@@ -22,6 +22,9 @@ const detailsDescription = document.getElementById("detailsDescription");
 const detailsStatusInput = document.getElementById("detailsStatusInput");
 const detailsUpdateInput = document.getElementById("detailsUpdateInput");
 const detailsMeta = document.getElementById("detailsMeta");
+const systemInput = document.getElementById("systemInput");
+const platformInput = document.getElementById("platformInput");
+const platformSummary = document.getElementById("platformSummary");
 const totalCount = document.getElementById("totalCount");
 const progressCount = document.getElementById("progressCount");
 const doneCount = document.getElementById("doneCount");
@@ -35,24 +38,30 @@ const initialDemands = [
   {
     id: generateId(),
     title: "Ajustar conciliação instantânea",
-    status: "andamento",
+    status: "Em Desenvolvimento",
     description: "Mapear divergências de retorno no processamento de QR dinâmico.",
     update: "Em refinamento com arquitetura.",
     produto: "Pix Cobrança",
     sistema: "Core Liquidação",
     plataforma: "API",
     squadTeam: "pix",
+    prioridade: "P2_Media",
+    type: "Melhoria",
+    metodologia: "Kanban",
   },
   {
     id: generateId(),
     title: "Revisar fluxo de estorno PIX",
-    status: "backlog",
+    status: "BackLog",
     description: "Documentar edge cases e regras do fluxo de devolução.",
     update: "Aguardando validação do negócio.",
     produto: "Pix Devolução",
     sistema: "Backoffice",
     plataforma: "Web",
     squadTeam: "pix",
+    prioridade: "P1_Alta",
+    type: "Projeto",
+    metodologia: "Scrum",
   },
 ];
 
@@ -72,20 +81,35 @@ function generateId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
+function generatePrimaryKeyCandidate() {
+  const seconds = Math.floor(Date.now() / 1000);
+  const entropy = Math.floor(Math.random() * 1000);
+  return seconds + entropy;
+}
+
 
 function normalizeStatus(rawStatus) {
   const value = String(rawStatus || "").trim().toLowerCase();
   const clean = value.normalize("NFD").replace(/[̀-ͯ]/g, "");
 
-  if (["andamento", "em andamento", "em_andamento", "in progress", "in_progress"].includes(clean)) {
-    return "andamento";
-  }
-
-  if (["concluida", "concluido", "concluídas", "concluidas", "done", "finalizada", "finalizado"].includes(clean)) {
-    return "concluida";
-  }
-
+  if (["em refinamento", "refinamento", "em_refinamento"].includes(clean)) return "em_refinamento";
+  if (["em desenvolvimento", "desenvolvimento", "em_desenvolvimento", "andamento", "em andamento"].includes(clean)) return "em_desenvolvimento";
+  if (["homologacao", "homologação"].includes(clean)) return "homologacao";
+  if (["teste qa", "teste_qa", "qa"].includes(clean)) return "teste_qa";
+  if (["concluido", "concluida", "done", "finalizado", "finalizada"].includes(clean)) return "concluido";
+  if (["impedido", "blocked", "bloqueado"].includes(clean)) return "impedido";
   return "backlog";
+}
+
+function statusToDatabaseValue(status) {
+  const normalized = normalizeStatus(status);
+  if (normalized === "em_refinamento") return "Em Refinamento";
+  if (normalized === "em_desenvolvimento") return "Em Desenvolvimento";
+  if (normalized === "homologacao") return "Homologação";
+  if (normalized === "teste_qa") return "Teste QA";
+  if (normalized === "concluido") return "Concluido";
+  if (normalized === "impedido") return "Impedido";
+  return "BackLog";
 }
 
 function setBanner(text, isRemote) {
@@ -110,6 +134,9 @@ function normalizeDemand(raw) {
     sistema: raw.sistema || "-",
     plataforma: raw.plataforma || "-",
     squadTeam: raw.squad_team || "-",
+    prioridade: raw.prioridade || "-",
+    type: raw.type || "-",
+    metodologia: raw.metodologia || "-",
     createdAt: raw.data_criacao || "-",
     updatedAt: raw.data_atualiza || "-",
   };
@@ -119,7 +146,7 @@ function buildAuthHeaders() {
   const key = String(config.supabaseAnonKey || "").trim();
   const headers = { apikey: key };
 
-  if (key.startsWith("eyJ")) {
+  if (key) {
     headers.Authorization = `Bearer ${key}`;
   }
 
@@ -162,8 +189,8 @@ function formatRemoteError(error) {
     return "Erro remoto (404): verifique supabaseUrl, tableName e schema.";
   }
 
-  if (msg.includes("Invalid API key") || msg.includes("No API key found") || msg.includes("401") || msg.includes("JWT")) {
-    return "Erro auth: confirme se a chave é válida (anon JWT ou publishable) e se o projeto está ativo.";
+  if (msg.includes("Invalid API key") || msg.includes("No API key found") || msg.includes("401") || msg.includes("JWT") || msg.includes("403 Forbidden")) {
+    return "Erro de autenticação/chave: use a chave correta e ativa do projeto (anon JWT ou publishable key).";
   }
 
   if (msg.includes("403") || msg.includes("row-level security") || msg.includes("permission denied")) {
@@ -174,39 +201,67 @@ function formatRemoteError(error) {
     return "Schema não exposto: adicione o schema em Settings > API > Exposed schemas.";
   }
 
-  return "Falha no remoto. Verifique URL, chave, schema exposto e políticas RLS.";
+  if (msg.includes("Failed to fetch") || msg.includes("ERR_")) {
+    return "Falha de conexão/CORS: confirme se o endpoint está acessível e liberado para a origem do site.";
+  }
+
+  return `Falha no remoto (${msg || "sem detalhe"}). Verifique URL, chave, schema exposto e políticas RLS.`;
 }
 
 async function remoteFetchDemands() {
   const rows = await requestSupabase(
-    `${tableTarget.table}?select=primari_key,id,demanda,produto,sistema,plataforma,status,atualizacao,squad_team,data_criacao,data_atualiza&order=data_criacao.desc.nullslast,primari_key.desc`,
+    `${tableTarget.table}?select=primari_key,id,prioridade,produto,sistema,demanda,status,plataforma,squad_team,type,metodologia,atualizacao,data_criacao,data_atualiza&order=data_criacao.desc.nullslast,primari_key.desc`,
   );
   return rows.map(normalizeDemand);
 }
 
 async function remoteInsertDemand(demand) {
   const payload = {
+    id: demand.id,
+    prioridade: demand.prioridade || "-",
     demanda: demand.title,
-    status: normalizeStatus(demand.status),
+    status: statusToDatabaseValue(demand.status),
     atualizacao: demand.update || "",
     data_criacao: new Date().toISOString().slice(0, 10),
     data_atualiza: new Date().toISOString().slice(0, 10),
     produto: demand.produto || "-",
     sistema: demand.sistema || demand.description || "-",
     plataforma: demand.plataforma || "-",
-    squad_team: demand.squadTeam || "pix",
+    squad_team: demand.squadTeam || "PIX",
+    type: demand.type || "-",
+    metodologia: demand.metodologia || "Kanban",
   };
 
-  const inserted = await requestSupabase(tableTarget.table, {
+  const sendInsert = async (candidatePayload) => requestSupabase(tableTarget.table, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify([payload]),
+    body: JSON.stringify([candidatePayload]),
   });
 
-  return normalizeDemand(inserted[0]);
+  try {
+    const inserted = await sendInsert(payload);
+    return normalizeDemand(inserted[0]);
+  } catch (error) {
+    const message = String(error?.message || "");
+    const requiresPrimaryKey =
+      message.includes("primari_key") &&
+      (message.includes("null value") || message.includes("not-null") || message.includes("violates"));
+
+    if (!requiresPrimaryKey) {
+      throw error;
+    }
+
+    const payloadWithPrimaryKey = {
+      ...payload,
+      primari_key: generatePrimaryKeyCandidate(),
+    };
+
+    const inserted = await sendInsert(payloadWithPrimaryKey);
+    return normalizeDemand(inserted[0]);
+  }
 }
 
 async function remoteUpdateDemand(demand) {
@@ -223,7 +278,7 @@ async function remoteUpdateDemand(demand) {
     },
     body: JSON.stringify({
       atualizacao: demand.update,
-      status: normalizeStatus(demand.status),
+      status: statusToDatabaseValue(demand.status),
       data_atualiza: new Date().toISOString().slice(0, 10),
     }),
   });
@@ -280,16 +335,51 @@ async function bootstrapDemands() {
 }
 
 function translateStatus(status) {
-  const normalized = normalizeStatus(status);
-  if (normalized === "andamento") return "Em andamento";
-  if (normalized === "concluida") return "Concluída";
-  return "Backlog";
+  return statusToDatabaseValue(status);
 }
 
 function updateSummary() {
   totalCount.textContent = `${demands.length} demandas`;
-  progressCount.textContent = `${demands.filter((item) => item.status === "andamento").length} demandas`;
-  doneCount.textContent = `${demands.filter((item) => item.status === "concluida").length} demandas`;
+  progressCount.textContent = `${demands.filter((item) => normalizeStatus(item.status) === "em_desenvolvimento").length} demandas`;
+  doneCount.textContent = `${demands.filter((item) => normalizeStatus(item.status) === "concluido").length} demandas`;
+}
+
+function cleanDisplayText(value) {
+  const raw = String(value || "-");
+  if (!raw || raw === "-") return "-";
+
+  return raw
+    .split(",")
+    .map((part) => part.trim().replace(/[_-]+/g, " ").replace(/\s+/g, " "))
+    .filter(Boolean)
+    .join(", ");
+}
+
+function cleanTitleText(value) {
+  return cleanDisplayText(value).replace(/\bitau\b/gi, "Itaú");
+}
+
+
+function getPlatformOptionInputs() {
+  return Array.from(document.querySelectorAll(".platform-option"));
+}
+
+function getSelectedPlatforms() {
+  return getPlatformOptionInputs()
+    .filter((item) => item.checked)
+    .map((item) => item.value);
+}
+
+function refreshPlatformSummary() {
+  const selected = getSelectedPlatforms();
+  platformSummary.textContent = selected.length ? selected.join(", ") : "Selecione plataforma(s)";
+}
+
+function clearPlatformSelection() {
+  for (const option of getPlatformOptionInputs()) {
+    option.checked = false;
+  }
+  refreshPlatformSummary();
 }
 
 function renderMetaList(metaPairs) {
@@ -298,17 +388,20 @@ function renderMetaList(metaPairs) {
 
 function openDemandDetails(demand) {
   selectedDemandId = demand.id;
-  detailsTitle.textContent = demand.title;
-  detailsDescription.textContent = demand.description;
-  detailsStatusInput.value = demand.status;
+  detailsTitle.textContent = cleanTitleText(demand.title);
+  detailsDescription.textContent = cleanDisplayText(demand.description);
+  detailsStatusInput.value = normalizeStatus(demand.status);
   detailsUpdateInput.value = demand.update || "";
   detailsMeta.innerHTML = renderMetaList([
     ["ID lógico", demand.id],
     ["Primary key", demand.dbPrimaryKey],
-    ["Produto", demand.produto],
-    ["Sistema", demand.sistema],
-    ["Plataforma", demand.plataforma],
+    ["Prioridade", cleanDisplayText(demand.prioridade)],
+    ["Produto", cleanDisplayText(demand.produto)],
+    ["Sistema", cleanDisplayText(demand.sistema)],
+    ["Plataforma", cleanDisplayText(demand.plataforma)],
     ["Squad", demand.squadTeam],
+    ["Type", demand.type],
+    ["Metodologia", demand.metodologia],
     ["Criada em", demand.createdAt],
     ["Atualizada em", demand.updatedAt],
   ]);
@@ -331,14 +424,15 @@ function renderBoard() {
     const card = node.querySelector(".card");
     const chip = node.querySelector(".chip");
 
-    node.querySelector(".card-title").textContent = demand.title;
-    node.querySelector(".card-description").textContent = demand.description;
+    node.querySelector(".card-title").textContent = cleanTitleText(demand.title);
+    node.querySelector(".card-description").textContent = cleanDisplayText(demand.description);
 
     const cardMeta = node.querySelector(".card-meta");
     cardMeta.innerHTML = [
-      `<li><strong>Produto:</strong> ${demand.produto || "-"}</li>`,
-      `<li><strong>Sistema:</strong> ${demand.sistema || "-"}</li>`,
-      `<li><strong>Plataforma:</strong> ${demand.plataforma || "-"}</li>`,
+      `<li><strong>Prioridade:</strong> ${cleanDisplayText(demand.prioridade)}</li>`,
+      `<li><strong>Produto:</strong> ${cleanDisplayText(demand.produto)}</li>`,
+      `<li><strong>Sistema:</strong> ${cleanDisplayText(demand.sistema)}</li>`,
+      `<li><strong>Plataforma:</strong> ${cleanDisplayText(demand.plataforma)}</li>`,
     ].join("");
 
     const normalizedStatus = normalizeStatus(demand.status);
@@ -372,16 +466,24 @@ document.getElementById("cancelDetailsBtn").addEventListener("click", () => {
 demandForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
+  if (!getSelectedPlatforms().length) {
+    setBanner("Selecione ao menos uma plataforma para criar a demanda.", false);
+    return;
+  }
+
   const demand = {
-    id: generateId(),
+    id: document.getElementById("idInput").value.trim() || generateId(),
     title: document.getElementById("titleInput").value.trim(),
-    description: document.getElementById("descriptionInput").value.trim(),
+    description: document.getElementById("descriptionInput").value.trim() || systemInput.value || "-",
     status: document.getElementById("statusInput").value,
     update: "",
-    produto: "-",
-    sistema: "-",
-    plataforma: "-",
-    squadTeam: "pix",
+    prioridade: document.getElementById("priorityInput").value,
+    produto: document.getElementById("productInput").value,
+    sistema: systemInput.value,
+    plataforma: getSelectedPlatforms().join(", ") || "-",
+    squadTeam: document.getElementById("squadInput").value.trim() || "PIX",
+    type: document.getElementById("typeInput").value,
+    metodologia: document.getElementById("methodologyInput").value,
   };
 
   if (hasRemoteConfig) {
@@ -402,6 +504,7 @@ demandForm.addEventListener("submit", async (event) => {
   updateSummary();
   renderBoard();
   demandForm.reset();
+  clearPlatformSelection();
   demandDialog.close();
 });
 
@@ -433,8 +536,14 @@ detailsForm.addEventListener("submit", async (event) => {
 });
 
 (async function init() {
+  for (const option of getPlatformOptionInputs()) {
+    option.addEventListener("change", refreshPlatformSummary);
+  }
+
+  refreshPlatformSummary();
   setBanner("Conectando e carregando demandas...", false);
   await bootstrapDemands();
   updateSummary();
   renderBoard();
 })();
+
