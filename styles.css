@@ -105,11 +105,11 @@ h1 {
   padding: 1rem;
   box-shadow: var(--shadow);
   cursor: pointer;
+  transition: transform 0.2s;
 }
 
 .card:hover {
   transform: translateY(-2px);
-  transition: 0.2s;
 }
 
 .card-head {
@@ -156,6 +156,17 @@ h1 {
   line-height: 1.4;
 }
 
+.card-meta {
+  margin: 0.8rem 0 0;
+  padding-left: 1rem;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.card-meta li + li {
+  margin-top: 0.2rem;
+}
+
 textarea,
 input,
 select {
@@ -196,6 +207,27 @@ button {
 .dialog-content {
   display: grid;
   gap: 0.8rem;
+}
+
+.details-meta {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 0.35rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: #19070d;
+  margin: 0;
+}
+
+.details-meta dt {
+  color: #ffb8c8;
+  font-weight: 600;
+}
+
+.details-meta dd {
+  margin: 0;
+  color: var(--text-soft);
 }
 
 .dialog menu {
