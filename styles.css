@@ -1311,3 +1311,157 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* --- Novo visual da tela de login --- */
+.login-screen {
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255, 35, 90, 0.14), transparent 30%),
+    radial-gradient(circle at 85% 18%, rgba(255, 30, 70, 0.1), transparent 30%),
+    linear-gradient(135deg, #22000d, #120007, #050003);
+}
+
+.login-screen .bg {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.login-screen .grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 44px 44px;
+  opacity: 0.35;
+  mask-image: radial-gradient(circle at center, black 55%, transparent 100%);
+}
+
+.login-screen .glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.28;
+}
+
+.login-screen .glow-1 {
+  width: 280px;
+  height: 280px;
+  left: 8%;
+  top: 8%;
+  background: rgba(255, 30, 80, 0.35);
+}
+
+.login-screen .glow-2 {
+  width: 320px;
+  height: 320px;
+  right: 8%;
+  bottom: 10%;
+  background: rgba(180, 0, 45, 0.28);
+}
+
+.login-screen .trail {
+  position: absolute;
+  left: -20%;
+  width: 140%;
+  height: 2px;
+  border-radius: 999px;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 100, 140, 0.25), rgba(255, 70, 120, 0.65), rgba(255, 100, 140, 0.25), transparent);
+}
+
+.login-screen .trail-1 { top: 20%; animation: lineLeft 8s linear infinite; }
+.login-screen .trail-2 { top: 38%; animation: lineRight 10s linear infinite; }
+.login-screen .trail-3 { top: 62%; animation: lineLeft 9s linear infinite; }
+.login-screen .trail-4 { top: 82%; animation: lineRight 11s linear infinite; }
+
+.login-screen .page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login-screen .login-card {
+  width: 100%;
+  max-width: 470px;
+  padding: 34px 30px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 110, 150, 0.18);
+  background: linear-gradient(180deg, rgba(28, 0, 12, 0.82), rgba(14, 0, 6, 0.78));
+  backdrop-filter: blur(8px);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35), 0 0 28px rgba(255, 30, 80, 0.08);
+}
+
+.login-screen .login-badge {
+  margin: 0 auto 16px;
+  padding: 8px 16px;
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+
+.login-screen .login-title {
+  font-size: clamp(2rem, 5vw, 2.6rem);
+  margin-bottom: 6px;
+}
+
+.login-screen .login-subtitle {
+  margin-bottom: 22px;
+  color: #d7a9b7;
+}
+
+.login-screen .field-label { font-size: 0.92rem; color: #efbcc8; }
+
+.login-screen .login-form { gap: 12px; }
+
+.login-screen .login-form input {
+  height: 54px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 95, 135, 0.22);
+  background: rgba(14, 0, 6, 0.88);
+}
+
+.login-screen #loginBtn {
+  height: 56px;
+  margin-top: 8px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #b90037, #ff1f5a, #ff4d7d);
+  box-shadow: 0 10px 22px rgba(255, 20, 80, 0.22);
+}
+
+.loading-area { display: none; margin-top: 8px; }
+.loading-area.is-visible { display: block; }
+.loading-text { color: #efbcc8; font-size: 0.9rem; margin-bottom: 8px; }
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.progress-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #b90037, #ff1f5a, #ff4d7d);
+  transition: width 0.2s;
+}
+
+#loginBtn.is-loading .btnLoader { display: none; }
+
+@keyframes lineLeft {
+  0% { transform: translateX(-10%) rotate(-6deg); opacity: 0; }
+  12% { opacity: 0.35; }
+  88% { opacity: 0.35; }
+  100% { transform: translateX(10%) rotate(-6deg); opacity: 0; }
+}
+
+@keyframes lineRight {
+  0% { transform: translateX(10%) rotate(6deg); opacity: 0; }
+  12% { opacity: 0.35; }
+  88% { opacity: 0.35; }
+  100% { transform: translateX(-10%) rotate(6deg); opacity: 0; }
+}
