@@ -22,12 +22,59 @@ const detailsDescription = document.getElementById("detailsDescription");
 const detailsStatusInput = document.getElementById("detailsStatusInput");
 const detailsUpdateInput = document.getElementById("detailsUpdateInput");
 const detailsMeta = document.getElementById("detailsMeta");
+const idInput = document.getElementById("idInput");
 const systemInput = document.getElementById("systemInput");
 const platformInput = document.getElementById("platformInput");
 const platformSummary = document.getElementById("platformSummary");
 const totalCount = document.getElementById("totalCount");
 const progressCount = document.getElementById("progressCount");
 const doneCount = document.getElementById("doneCount");
+
+const loginScreen = document.getElementById("loginScreen");
+const appShell = document.getElementById("appShell");
+const loginForm = document.getElementById("loginForm");
+const loginUserInput = document.getElementById("loginUserInput");
+const loginPassInput = document.getElementById("loginPassInput");
+const loginError = document.getElementById("loginError");
+const loginBtn = document.getElementById("loginBtn");
+const loginText = document.getElementById("loginText");
+const loginCard = document.querySelector(".login-card");
+const logoutBtn = document.getElementById("logoutBtn");
+const welcomeDialog = document.getElementById("welcomeDialog");
+const welcomeMessage = document.getElementById("welcomeMessage");
+const welcomeProgressBar = document.getElementById("welcomeProgressBar");
+const logoutConfirmDialog = document.getElementById("logoutConfirmDialog");
+const confirmLogoutBtn = document.getElementById("confirmLogoutBtn");
+
+const AUTH_SESSION_KEY = "redeflex.auth.user";
+const WELCOME_SEEN_KEY = "redeflex.welcome.seen";
+const DEFAULT_AUTH_USERS = {
+  joaov: "rede2025",
+  lucas: "rede2026",
+  admin: "admin",
+};
+
+function buildAuthUsersMap(rawUsers) {
+  const entries = Object.entries(rawUsers || {});
+  const map = {};
+
+  for (const [username, password] of entries) {
+    const safeUsername = String(username || "").trim().toLowerCase();
+    if (!safeUsername) continue;
+    map[safeUsername] = String(password || "").trim();
+  }
+
+  return map;
+}
+
+const AUTH_USERS = {
+  ...buildAuthUsersMap(DEFAULT_AUTH_USERS),
+  ...buildAuthUsersMap(config.authUsers),
+};
+
+let isAppInitialized = false;
+let welcomeAutoCloseTimer = null;
+let welcomeProgressInterval = null;
 
 const tableTarget = resolveTablePath(config.tableName);
 
@@ -79,6 +126,23 @@ function resolveTablePath(rawTableName) {
 
 function generateId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function parseSequentialOpcomId(rawId) {
+  const value = String(rawId || "").trim();
+  const match = value.match(/^opcom_?(\d+)$/i);
+  if (!match) return null;
+  return Number(match[1]);
+}
+
+function getNextDemandId() {
+  const maxId = demands.reduce((max, demand) => {
+    const parsed = parseSequentialOpcomId(demand.id);
+    if (parsed === null || Number.isNaN(parsed)) return max;
+    return Math.max(max, parsed);
+  }, 0);
+
+  return `OPCOM_${maxId + 1}`;
 }
 
 function generatePrimaryKeyCandidate() {
@@ -419,39 +483,87 @@ function renderBoard() {
     return;
   }
 
-  for (const demand of demands) {
-    const node = demandTemplate.content.cloneNode(true);
-    const card = node.querySelector(".card");
-    const chip = node.querySelector(".chip");
+  const statusGroups = [
+    { key: "backlog", label: "BackLog" },
+    { key: "em_refinamento", label: "Em Refinamento" },
+    { key: "em_desenvolvimento", label: "Em Desenvolvimento" },
+    { key: "homologacao", label: "Homologação" },
+    { key: "teste_qa", label: "Teste QA" },
+    { key: "impedido", label: "Impedido" },
+    { key: "concluido", label: "Concluido" },
+  ];
 
-    node.querySelector(".card-title").textContent = cleanTitleText(demand.title);
-    node.querySelector(".card-description").textContent = cleanDisplayText(demand.description);
+  const grouped = statusGroups.map((group) => ({
+    ...group,
+    items: demands.filter((item) => normalizeStatus(item.status) === group.key),
+  }));
 
-    const cardMeta = node.querySelector(".card-meta");
-    cardMeta.innerHTML = [
-      `<li><strong>Prioridade:</strong> ${cleanDisplayText(demand.prioridade)}</li>`,
-      `<li><strong>Produto:</strong> ${cleanDisplayText(demand.produto)}</li>`,
-      `<li><strong>Sistema:</strong> ${cleanDisplayText(demand.sistema)}</li>`,
-      `<li><strong>Plataforma:</strong> ${cleanDisplayText(demand.plataforma)}</li>`,
-    ].join("");
+  const nonEmptyGroups = grouped.filter((group) => group.items.length > 0);
 
-    const normalizedStatus = normalizeStatus(demand.status);
-    chip.textContent = translateStatus(normalizedStatus);
-    chip.classList.add(normalizedStatus);
+  for (const group of nonEmptyGroups) {
+    const section = document.createElement("section");
+    section.className = "status-section";
 
-    card.addEventListener("click", () => openDemandDetails(demand));
-    card.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        openDemandDetails(demand);
-      }
+    const sectionHead = document.createElement("header");
+    sectionHead.className = "status-section-head";
+    sectionHead.innerHTML = `<h2>${group.label}</h2><span>${group.items.length}</span>`;
+    section.appendChild(sectionHead);
+
+    const lane = document.createElement("div");
+    lane.className = "status-lane";
+
+    group.items.forEach((demand, index) => {
+      const node = demandTemplate.content.cloneNode(true);
+      const card = node.querySelector(".card");
+      const chip = node.querySelector(".chip");
+
+      node.querySelector(".card-title").textContent = cleanTitleText(demand.title);
+      node.querySelector(".card-description").textContent = cleanDisplayText(demand.description);
+
+      const cardMeta = node.querySelector(".card-meta");
+      cardMeta.innerHTML = [
+        `<li><strong>Prioridade:</strong> ${cleanDisplayText(demand.prioridade)}</li>`,
+        `<li><strong>Produto:</strong> ${cleanDisplayText(demand.produto)}</li>`,
+        `<li><strong>Sistema:</strong> ${cleanDisplayText(demand.sistema)}</li>`,
+        `<li><strong>Plataforma:</strong> ${cleanDisplayText(demand.plataforma)}</li>`,
+      ].join("");
+
+      const normalizedStatus = normalizeStatus(demand.status);
+      chip.textContent = translateStatus(normalizedStatus);
+      chip.classList.add(normalizedStatus);
+
+      card.style.animationDelay = `${index * 30}ms`;
+
+      card.addEventListener("click", () => openDemandDetails(demand));
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openDemandDetails(demand);
+        }
+      });
+
+      lane.appendChild(node);
     });
 
-    board.appendChild(node);
+    section.appendChild(lane);
+    board.appendChild(section);
+  }
+
+  const emptyGroups = grouped.filter((group) => group.items.length === 0);
+  if (emptyGroups.length) {
+    const compactLegend = document.createElement("div");
+    compactLegend.className = "empty-status-legend";
+    compactLegend.innerHTML = emptyGroups
+      .map((group) => `<span>${group.label}: 0</span>`)
+      .join("");
+    board.appendChild(compactLegend);
   }
 }
 
 document.getElementById("newDemandBtn").addEventListener("click", () => {
+  if (idInput && !idInput.value.trim()) {
+    idInput.value = getNextDemandId();
+  }
   demandDialog.showModal();
 });
 
@@ -472,7 +584,7 @@ demandForm.addEventListener("submit", async (event) => {
   }
 
   const demand = {
-    id: document.getElementById("idInput").value.trim() || generateId(),
+    id: idInput.value.trim() || getNextDemandId(),
     title: document.getElementById("titleInput").value.trim(),
     description: document.getElementById("descriptionInput").value.trim() || systemInput.value || "-",
     status: document.getElementById("statusInput").value,
@@ -535,7 +647,10 @@ detailsForm.addEventListener("submit", async (event) => {
   detailsDialog.close();
 });
 
-(async function init() {
+async function initApp() {
+  if (isAppInitialized) return;
+  isAppInitialized = true;
+
   for (const option of getPlatformOptionInputs()) {
     option.addEventListener("change", refreshPlatformSummary);
   }
@@ -545,5 +660,208 @@ detailsForm.addEventListener("submit", async (event) => {
   await bootstrapDemands();
   updateSummary();
   renderBoard();
-})();
+}
 
+function showLoginScreen() {
+  loginScreen.classList.remove("is-hidden");
+  appShell.classList.add("is-hidden");
+  loginError.textContent = "";
+}
+
+function showAppScreen() {
+  loginScreen.classList.add("is-hidden");
+  appShell.classList.remove("is-hidden");
+  appShell.classList.remove("launcher-enter");
+  requestAnimationFrame(() => appShell.classList.add("launcher-enter"));
+}
+
+function clearWelcomeTimers() {
+  if (welcomeAutoCloseTimer) {
+    clearTimeout(welcomeAutoCloseTimer);
+    welcomeAutoCloseTimer = null;
+  }
+
+  if (welcomeProgressInterval) {
+    clearInterval(welcomeProgressInterval);
+    welcomeProgressInterval = null;
+  }
+}
+
+function showWelcomePopup(authenticatedUser) {
+  if (!welcomeDialog) return;
+
+  const alreadySeen = sessionStorage.getItem(WELCOME_SEEN_KEY) === "1";
+  if (alreadySeen) return;
+
+  const displayUser = String(authenticatedUser || "time").toUpperCase();
+  if (welcomeMessage) {
+    welcomeMessage.textContent = `Bem-vindo(a), ${displayUser}! Tudo pronto no launcher para organizar as demandas.`;
+  }
+
+  const progressContainer = welcomeDialog.querySelector(".welcome-progress");
+  if (progressContainer) {
+    progressContainer.setAttribute("aria-valuenow", "100");
+  }
+
+  if (welcomeProgressBar) {
+    welcomeProgressBar.style.width = "100%";
+  }
+
+  if (!welcomeDialog.open) {
+    welcomeDialog.showModal();
+  }
+
+  clearWelcomeTimers();
+
+  let remaining = 100;
+  const totalDurationMs = 7000;
+  const stepMs = 100;
+  const decrement = 100 / (totalDurationMs / stepMs);
+
+  welcomeProgressInterval = setInterval(() => {
+    remaining = Math.max(0, remaining - decrement);
+    if (welcomeProgressBar) {
+      welcomeProgressBar.style.width = `${remaining}%`;
+    }
+    if (progressContainer) {
+      progressContainer.setAttribute("aria-valuenow", String(Math.round(remaining)));
+    }
+  }, stepMs);
+
+  welcomeAutoCloseTimer = setTimeout(() => {
+    clearWelcomeTimers();
+    if (welcomeDialog.open) {
+      welcomeDialog.close("timeout");
+    }
+  }, totalDurationMs);
+
+  sessionStorage.setItem(WELCOME_SEEN_KEY, "1");
+}
+
+function performLogout() {
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
+  sessionStorage.removeItem(WELCOME_SEEN_KEY);
+  showLoginScreen();
+  loginPassInput.value = "";
+  loginUserInput.focus();
+}
+
+function setupLogout() {
+  if (!logoutBtn || !logoutConfirmDialog || !confirmLogoutBtn) return;
+
+  logoutBtn.addEventListener("click", () => {
+    logoutConfirmDialog.showModal();
+  });
+
+  confirmLogoutBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    performLogout();
+    logoutConfirmDialog.close("confirm");
+  });
+}
+
+function createAuthController(options) {
+  const { users, sessionKey, ui, onAuthenticated } = options;
+
+  function setLoading(isLoading) {
+    if (!loginBtn) return;
+    loginBtn.classList.toggle("is-loading", isLoading);
+    loginBtn.disabled = isLoading;
+    if (loginText) {
+      loginText.textContent = isLoading ? "Entrando..." : "Entrar";
+    }
+  }
+
+  function authenticate(user, pass) {
+    const username = String(user || "").trim().toLowerCase();
+    const password = String(pass || "").trim();
+    return users[username] && users[username] === password ? username : null;
+  }
+
+  function getSessionUser() {
+    return sessionStorage.getItem(sessionKey);
+  }
+
+  function isSessionValid(user) {
+    return Boolean(user && users[user]);
+  }
+
+  async function handleSuccess(authenticatedUser) {
+    sessionStorage.setItem(sessionKey, authenticatedUser);
+    loginError.textContent = "";
+    ui.showAppScreen();
+    await onAuthenticated();
+    showWelcomePopup(authenticatedUser);
+  }
+
+  async function init() {
+    const activeUser = getSessionUser();
+
+    if (isSessionValid(activeUser)) {
+      ui.showAppScreen();
+      await onAuthenticated();
+      showWelcomePopup(activeUser);
+      return;
+    }
+
+    ui.showLoginScreen();
+
+    loginUserInput.addEventListener("input", () => {
+      if (loginError.textContent) loginError.textContent = "";
+    });
+
+    loginPassInput.addEventListener("input", () => {
+      if (loginError.textContent) loginError.textContent = "";
+    });
+
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      setLoading(true);
+
+      try {
+        const user = loginUserInput.value;
+        const pass = loginPassInput.value;
+        const authenticatedUser = authenticate(user, pass);
+
+        if (!authenticatedUser) {
+          loginError.textContent = "Usuário ou senha inválidos.";
+          if (loginCard) {
+            loginCard.classList.remove("is-error");
+            requestAnimationFrame(() => loginCard.classList.add("is-error"));
+            setTimeout(() => loginCard.classList.remove("is-error"), 320);
+          }
+          return;
+        }
+
+        await handleSuccess(authenticatedUser);
+      } finally {
+        setLoading(false);
+      }
+    });
+  }
+
+  return {
+    init,
+  };
+}
+
+async function setupAuthGate() {
+  const auth = createAuthController({
+    users: AUTH_USERS,
+    sessionKey: AUTH_SESSION_KEY,
+    ui: {
+      showLoginScreen,
+      showAppScreen,
+    },
+    onAuthenticated: initApp,
+  });
+
+  await auth.init();
+}
+
+if (welcomeDialog) {
+  welcomeDialog.addEventListener("close", clearWelcomeTimers);
+}
+
+setupLogout();
+setupAuthGate();
