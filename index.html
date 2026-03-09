@@ -13,13 +13,70 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <section id="loginScreen" class="login-screen" aria-live="polite">
+      <div class="login-aurora" aria-hidden="true"></div>
+      <div class="login-grid" aria-hidden="true"></div>
+
+      <div class="login-card">
+        <div class="login-badge">REDEFLEX • SQUAD PIX</div>
+        <h1 class="login-title"> Painel Backlog</h1>
+      
+
+        <form id="loginForm" class="login-form">
+          <label class="field-label" for="loginUserInput">Usuário</label>
+          <input id="loginUserInput" type="text" placeholder="Digite seu usuário" autocomplete="username" required />
+
+          <label class="field-label" for="loginPassInput">Senha</label>
+          <input id="loginPassInput" type="password" placeholder="Digite sua senha" autocomplete="current-password" required />
+
+          <button id="loginBtn" class="primary-btn" type="submit">
+            <span id="loginText" class="btnText">Entrar</span>
+            <span class="btnLoader" aria-hidden="true"></span>
+          </button>
+          <p id="loginError" class="login-error" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <div id="appShell" class="app-shell is-hidden">
+
+
+</div>
+        <section id="loginScreen" class="login-screen" aria-live="polite">
+      <div class="login-aurora" aria-hidden="true"></div>
+      <div class="login-grid" aria-hidden="true"></div>
+
+      <div class="login-card">
+        <div class="login-badge">REDEFLEX • SQUAD PIX</div>
+        <h1 class="login-title">Painel Demandas</h1>
+
+        <form id="loginForm" class="login-form">
+          <label class="field-label" for="loginUserInput">Usuário</label>
+          <input id="loginUserInput" type="text" placeholder="Digite seu usuário" autocomplete="username" required />
+
+          <label class="field-label" for="loginPassInput">Senha</label>
+          <input id="loginPassInput" type="password" placeholder="Digite sua senha" autocomplete="current-password" required />
+
+          <button id="loginBtn" class="primary-btn" type="submit">
+            <span id="loginText" class="btnText">Entrar</span>
+            <span class="btnLoader" aria-hidden="true"></span>
+          </button>
+          <p id="loginError" class="login-error" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <div id="appShell" class="app-shell is-hidden">
+
       <header class="topbar">
         <div>
           <p class="brand">Redeflex</p>
           <h1>Demandas • Squad PIX</h1>
         </div>
-        <button id="newDemandBtn" class="primary-btn">+ Nova Demanda</button>
+        <div class="topbar-actions">
+          <button id="newDemandBtn" class="primary-btn">+ Nova Demanda</button>
+          <button id="logoutBtn" class="secondary-btn" type="button">Sair</button>
+        </div>
       </header>
 
       <section class="summary-grid" aria-label="resumo de demandas">
@@ -43,6 +100,28 @@
         <section id="board" class="board" aria-live="polite"></section>
       </main>
     </div>
+
+     <dialog id="welcomeDialog" class="dialog welcome-dialog">
+      <form method="dialog" class="dialog-content welcome-content">
+        <h2 id="welcomeTitle">Bem-vindo(a) 👋</h2>
+        <p id="welcomeMessage">Que bom te ver no launcher. Vamos organizar o backlog de hoje?</p>
+        <div class="welcome-progress" role="progressbar" aria-label="Tempo restante do aviso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+          <span id="welcomeProgressBar"></span>
+        </div>
+        <small class="welcome-timer">Fechando automaticamente em 7 segundos...</small>
+      </form>
+    </dialog>
+
+    <dialog id="logoutConfirmDialog" class="dialog logout-dialog">
+      <form method="dialog" class="dialog-content logout-content">
+        <h2>Confirmar saída</h2>
+        <p>Deseja realmente sair do launcher?</p>
+        <menu>
+          <button id="cancelLogoutBtn" value="cancel" type="submit">Cancelar</button>
+          <button id="confirmLogoutBtn" class="primary-btn" value="confirm" type="submit">Sair</button>
+        </menu>
+      </form>
+    </dialog>
 
     <dialog id="demandDialog" class="dialog">
       <form id="demandForm" method="dialog" class="dialog-content">
@@ -200,6 +279,6 @@
 
      <script src="config.js"></script>
     <script src="config.local.js"></script>
-    <script src="sciprt.js"></script>
+    <script src="script.js"></script>
   </body>
 </html>
