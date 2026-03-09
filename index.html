@@ -14,31 +14,59 @@
   </head>
   <body>
     <section id="loginScreen" class="login-screen" aria-live="polite">
-      <div class="login-aurora" aria-hidden="true"></div>
-      <div class="login-grid" aria-hidden="true"></div>
-
-      <div class="login-card">
-        <div class="login-badge">REDEFLEX • SQUAD PIX</div>
-        <h1 class="login-title">Painel Demandas</h1>
-
-        <form id="loginForm" class="login-form">
-          <label class="field-label" for="loginUserInput">Usuário</label>
-          <input id="loginUserInput" type="text" placeholder="Digite seu usuário" autocomplete="username" required />
-
-          <label class="field-label" for="loginPassInput">Senha</label>
-          <input id="loginPassInput" type="password" placeholder="Digite sua senha" autocomplete="current-password" required />
-
-          <button id="loginBtn" class="primary-btn" type="submit">
-            <span id="loginText" class="btnText">Entrar</span>
-            <span class="btnLoader" aria-hidden="true"></span>
-          </button>
-          <p id="loginError" class="login-error" aria-live="polite"></p>
-        </form>
+      <div class="bg" aria-hidden="true">
+        <div class="grid"></div>
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        <span class="trail trail-1"></span>
+        <span class="trail trail-2"></span>
+        <span class="trail trail-3"></span>
+        <span class="trail trail-4"></span>
       </div>
+
+      <main class="page">
+        <div class="login-card">
+          <div class="login-badge">REDEFLEX • SQUAD PIX</div>
+          <h1 class="login-title">Painel Demandas</h1>
+
+          <form id="loginForm" class="login-form">
+            <label class="field-label" for="loginUserInput">Usuário</label>
+            <input
+              id="loginUserInput"
+              type="text"
+              placeholder="Digite seu usuário"
+              autocomplete="username"
+              required
+            />
+
+            <label class="field-label" for="loginPassInput">Senha</label>
+            <input
+              id="loginPassInput"
+              type="password"
+              placeholder="Digite sua senha"
+              autocomplete="current-password"
+              required
+            />
+
+            <button id="loginBtn" class="primary-btn" type="submit">
+              <span id="loginText" class="btnText">Entrar</span>
+              <span class="btnLoader" aria-hidden="true"></span>
+            </button>
+
+            <div class="loading-area" id="loadingArea" aria-hidden="true">
+              <div class="loading-text" id="loadingText">Validando acesso...</div>
+              <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+              </div>
+            </div>
+
+            <p id="loginError" class="login-error" aria-live="polite"></p>
+          </form>
+        </div>
+      </main>
     </section>
 
     <div id="appShell" class="app-shell is-hidden">
-
       <header class="topbar">
         <div>
           <p class="brand">Redeflex</p>
@@ -72,14 +100,21 @@
       </main>
     </div>
 
-     <dialog id="welcomeDialog" class="dialog welcome-dialog">
+    <dialog id="welcomeDialog" class="dialog welcome-dialog">
       <form method="dialog" class="dialog-content welcome-content">
         <h2 id="welcomeTitle">Bem-vindo(a) 👋</h2>
         <p id="welcomeMessage">Que bom te ver no launcher. Vamos organizar o backlog de hoje?</p>
-        <div class="welcome-progress" role="progressbar" aria-label="Tempo restante do aviso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+        <div
+          class="welcome-progress"
+          role="progressbar"
+          aria-label="Tempo restante do aviso"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="100"
+        >
           <span id="welcomeProgressBar"></span>
         </div>
-        <small class="welcome-timer">Fechando automaticamente em 7 segundos...</small>
+        <small class="welcome-timer">Fechando automaticamente em alguns segundos...</small>
       </form>
     </dialog>
 
@@ -97,6 +132,7 @@
     <dialog id="demandDialog" class="dialog">
       <form id="demandForm" method="dialog" class="dialog-content">
         <h2>Nova demanda</h2>
+
         <div class="form-grid">
           <label>
             ID (tabela)
@@ -118,7 +154,8 @@
           Demanda
           <input type="text" id="titleInput" required maxlength="80" />
         </label>
-             <div class="form-grid">
+
+        <div class="form-grid">
           <label>
             Produto
             <select id="productInput" required>
@@ -181,14 +218,14 @@
         </div>
 
         <label>
-           Descrição (opcional)
+          Descrição (opcional)
           <textarea id="descriptionInput" rows="3" maxlength="240" placeholder="Detalhes complementares"></textarea>
         </label>
 
         <label>
           Status
           <select id="statusInput" required>
-      <option value="backlog">BackLog</option>
+            <option value="backlog">BackLog</option>
             <option value="Backlog">BackLog</option>
             <option value="Em Refinamento">Em Refinamento</option>
             <option value="Em Desenvolvimento">Em Desenvolvimento</option>
@@ -210,7 +247,7 @@
       <form id="detailsForm" method="dialog" class="dialog-content">
         <h2 id="detailsTitle"></h2>
         <p id="detailsDescription" class="details-description"></p>
-         <dl id="detailsMeta" class="details-meta"></dl>
+        <dl id="detailsMeta" class="details-meta"></dl>
 
         <label>
           Status
@@ -248,7 +285,7 @@
       </article>
     </template>
 
-     <script src="config.js"></script>
+    <script src="config.js"></script>
     <script src="config.local.js"></script>
     <script src="sciprt.js"></script>
   </body>
