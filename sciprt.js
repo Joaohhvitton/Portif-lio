@@ -38,6 +38,9 @@ const loginPassInput = document.getElementById("loginPassInput");
 const loginError = document.getElementById("loginError");
 const loginBtn = document.getElementById("loginBtn");
 const loginText = document.getElementById("loginText");
+const loadingArea = document.getElementById("loadingArea");
+const loadingText = document.getElementById("loadingText");
+const progressFill = document.getElementById("progressFill");
 const loginCard = document.querySelector(".login-card");
 const logoutBtn = document.getElementById("logoutBtn");
 const welcomeDialog = document.getElementById("welcomeDialog");
@@ -390,7 +393,7 @@ async function bootstrapDemands() {
       demands = await remoteFetchDemands();
     }
 
-    setBanner("Modo remoto ativo: demandas e atualizações salvas no Supabase.", true);
+    setBanner("Demandas sincronizadas com o banco de dados.", true);
   } catch (error) {
     demands = loadLocalDemands();
     setBanner(`${formatRemoteError(error)} (fallback local ativado)`, false);
@@ -754,8 +757,25 @@ function performLogout() {
   sessionStorage.removeItem(AUTH_SESSION_KEY);
   sessionStorage.removeItem(WELCOME_SEEN_KEY);
   showLoginScreen();
-  loginPassInput.value = "";
-  loginUserInput.focus();
+
+  if (loginUserInput) loginUserInput.value = "";
+  if (loginPassInput) loginPassInput.value = "";
+  if (loginError) loginError.textContent = "";
+
+  if (progressFill) progressFill.style.width = "0%";
+  if (loadingText) loadingText.textContent = "Validando acesso...";
+  if (loadingArea) {
+    loadingArea.classList.remove("is-visible");
+    loadingArea.setAttribute("aria-hidden", "true");
+  }
+  if (loginBtn) {
+    loginBtn.style.display = "inline-flex";
+    loginBtn.disabled = false;
+    loginBtn.classList.remove("is-loading");
+  }
+  if (loginText) loginText.textContent = "Entrar";
+
+  loginUserInput?.focus();
 }
 
 function setupLogout() {
@@ -791,8 +811,42 @@ function createAuthController(options) {
     if (!loginBtn) return;
     loginBtn.classList.toggle("is-loading", isLoading);
     loginBtn.disabled = isLoading;
+    loginBtn.style.display = isLoading ? "none" : "inline-flex";
+
+    if (loadingArea) {
+      loadingArea.classList.toggle("is-visible", isLoading);
+      loadingArea.setAttribute("aria-hidden", isLoading ? "false" : "true");
+    }
+
     if (loginText) {
       loginText.textContent = isLoading ? "Entrando..." : "Entrar";
+    }
+
+    if (!isLoading) {
+      if (progressFill) progressFill.style.width = "0%";
+      if (loadingText) loadingText.textContent = "Validando acesso...";
+    }
+  }
+
+  async function runLoginProgress() {
+    if (!progressFill || !loadingText) return;
+
+    let progress = 0;
+    while (progress < 100) {
+      progress = Math.min(100, progress + Math.floor(Math.random() * 12) + 6);
+      progressFill.style.width = `${progress}%`;
+
+      if (progress < 35) {
+        loadingText.textContent = "Validando acesso...";
+      } else if (progress < 70) {
+        loadingText.textContent = "Carregando painel...";
+      } else if (progress < 100) {
+        loadingText.textContent = "Abrindo launcher principal...";
+      } else {
+        loadingText.textContent = "Concluído!";
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
     }
   }
 
@@ -822,12 +876,12 @@ function createAuthController(options) {
     const activeUser = getSessionUser();
 
     // Sempre inicia pela tela de login para manter o gate visível ao usuário.
-    // Se houver sessão válida, apenas preenche o usuário para facilitar novo acesso.
     ui.showLoginScreen();
-    if (isSessionValid(activeUser)) {
-      loginUserInput.value = activeUser;
-      loginPassInput.value = "";
+    if (!isSessionValid(activeUser)) {
+      sessionStorage.removeItem(sessionKey);
     }
+    if (loginUserInput) loginUserInput.value = "";
+    if (loginPassInput) loginPassInput.value = "";
 
     loginUserInput.addEventListener("input", () => {
       if (loginError.textContent) loginError.textContent = "";
@@ -842,6 +896,8 @@ function createAuthController(options) {
       setLoading(true);
 
       try {
+        await runLoginProgress();
+
         const user = loginUserInput.value;
         const pass = loginPassInput.value;
         const authenticatedUser = authenticate(user, pass);
@@ -892,4 +948,3 @@ setupAuthGate().catch((error) => {
   setBanner("Não foi possível concluir a inicialização do login.", false);
   showLoginScreen();
 });
-s
