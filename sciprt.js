@@ -675,6 +675,16 @@ function showAppScreen() {
   requestAnimationFrame(() => appShell.classList.add("launcher-enter"));
 }
 
+
+function openDialogSafely(dialog) {
+  if (!dialog) return false;
+  if (typeof dialog.showModal === "function") {
+    dialog.showModal();
+    return true;
+  }
+  return false;
+}
+
 function clearWelcomeTimers() {
   if (welcomeAutoCloseTimer) {
     clearTimeout(welcomeAutoCloseTimer);
@@ -707,8 +717,10 @@ function showWelcomePopup(authenticatedUser) {
     welcomeProgressBar.style.width = "100%";
   }
 
-  if (!welcomeDialog.open) {
-    welcomeDialog.showModal();
+  if (!welcomeDialog.open && !openDialogSafely(welcomeDialog)) {
+    alert(`Bem-vindo(a), ${displayUser}! Tudo pronto no launcher para organizar as demandas.`);
+    sessionStorage.setItem(WELCOME_SEEN_KEY, "1");
+    return;
   }
 
   clearWelcomeTimers();
@@ -747,16 +759,28 @@ function performLogout() {
 }
 
 function setupLogout() {
-  if (!logoutBtn || !logoutConfirmDialog || !confirmLogoutBtn) return;
+  if (!logoutBtn || !confirmLogoutBtn) return;
+
+  const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
 
   logoutBtn.addEventListener("click", () => {
-    logoutConfirmDialog.showModal();
+    const opened = openDialogSafely(logoutConfirmDialog);
+    if (!opened) {
+      const shouldLogout = window.confirm("Deseja realmente sair do launcher?");
+      if (shouldLogout) performLogout();
+    }
   });
+
+  if (cancelLogoutBtn && logoutConfirmDialog) {
+    cancelLogoutBtn.addEventListener("click", () => logoutConfirmDialog.close("cancel"));
+  }
 
   confirmLogoutBtn.addEventListener("click", (event) => {
     event.preventDefault();
     performLogout();
-    logoutConfirmDialog.close("confirm");
+    if (logoutConfirmDialog?.open) {
+      logoutConfirmDialog.close("confirm");
+    }
   });
 }
 
@@ -797,14 +821,13 @@ function createAuthController(options) {
   async function init() {
     const activeUser = getSessionUser();
 
-    if (isSessionValid(activeUser)) {
-      ui.showAppScreen();
-      await onAuthenticated();
-      showWelcomePopup(activeUser);
-      return;
-    }
-
+    // Sempre inicia pela tela de login para manter o gate visível ao usuário.
+    // Se houver sessão válida, apenas preenche o usuário para facilitar novo acesso.
     ui.showLoginScreen();
+    if (isSessionValid(activeUser)) {
+      loginUserInput.value = activeUser;
+      loginPassInput.value = "";
+    }
 
     loginUserInput.addEventListener("input", () => {
       if (loginError.textContent) loginError.textContent = "";
@@ -864,4 +887,9 @@ if (welcomeDialog) {
 }
 
 setupLogout();
-setupAuthGate();
+setupAuthGate().catch((error) => {
+  console.error("Falha ao inicializar autenticação:", error);
+  setBanner("Não foi possível concluir a inicialização do login.", false);
+  showLoginScreen();
+});
+s
